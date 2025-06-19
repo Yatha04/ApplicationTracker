@@ -1,7 +1,7 @@
 import argparse
 from jobbot_config import load_env, load_processed_ids, save_processed_ids
 from notion_api import init_notion_client, create_application_page
-from email_ingest import authenticate_msal, fetch_application_emails, filter_unprocessed_emails, parse_application_email
+from email_ingest import authenticate_gmail, fetch_application_emails, filter_unprocessed_emails, parse_application_email
 from manual_cli import prompt_manual_entry
 
 
@@ -31,8 +31,8 @@ def main():
         return
 
     # Automated polling mode
-    token = authenticate_msal(config['OUTLOOK_CLIENT_ID'], config['OUTLOOK_TENANT_ID'])
-    emails = fetch_application_emails(token)
+    service = authenticate_gmail()
+    emails = fetch_application_emails(service)
     new_emails = filter_unprocessed_emails(emails, processed_ids)
     added = 0
     for email in new_emails:
