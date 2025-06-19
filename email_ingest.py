@@ -5,6 +5,8 @@ import os.path
 import pickle
 import base64
 import re
+import datetime
+from llm_extract import extract_fields_with_llm
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -56,43 +58,18 @@ def filter_unprocessed_emails(emails, processed_ids):
 def parse_application_email(email):
     subject = email.get("subject", "")
     body = email.get("body", "")
-    received = email.get("internalDate", "")
+    internal_date = email.get("internalDate", "")
+    if internal_date:
+        dt = datetime.datetime.utcfromtimestamp(int(internal_date) / 1000)
+        received = dt.date().isoformat()
+    else:
+        received = ""
+    llm_result = extract_fields_with_llm(subject, body)
+    if llm_result:
+        llm_result["applied_date"] = received
+        return llm_result
+    return None
 
-    patterns = [
-        # application for [Job Title] at [Company]
-        r"application for (.+?) at (.+?)(?:$|[.!?])",
-        # thank you for your application to [Company]
-        r"application to ([\w\s&.,'-]+)",
-        # your application to [Company] for [Job Title]
-        r"application to ([\w\s&.,'-]+) for ([\w\s&.,'-]+)",
-        # we received your application for [Job Title]
-        r"application for ([\w\s&.,'-]+)"
-    ]
 
-    # Try all patterns in subject and body
-    for pattern in patterns:
-        match = re.search(pattern, subject, re.IGNORECASE)
-        if match:
-            if pattern == patterns[0] and len(match.groups()) >= 2:
-                return {"title": match.group(1).strip(), "company": match.group(2).strip(), "applied_date": received}
-            elif pattern == patterns[1]:
-                return {"title": "Unknown", "company": match.group(1).strip(), "applied_date": received}
-            elif pattern == patterns[2] and len(match.groups()) >= 2:
-                return {"title": match.group(2).strip(), "company": match.group(1).strip(), "applied_date": received}
-            elif pattern == patterns[3]:
-                return {"title": match.group(1).strip(), "company": "Unknown", "applied_date": received}
-        match = re.search(pattern, body, re.IGNORECASE)
-        if match:
-            if pattern == patterns[0] and len(match.groups()) >= 2:
-                return {"title": match.group(1).strip(), "company": match.group(2).strip(), "applied_date": received}
-            elif pattern == patterns[1]:
-                return {"title": "Unknown", "company": match.group(1).strip(), "applied_date": received}
-            elif pattern == patterns[2] and len(match.groups()) >= 2:
-                return {"title": match.group(2).strip(), "company": match.group(1).strip(), "applied_date": received}
-            elif pattern == patterns[3]:
-                return {"title": match.group(1).strip(), "company": "Unknown", "applied_date": received}
-
-    # Fallback: if 'application' is present, create a generic entry
-    if "application" in subject.lower() or "application" in body.lower():
-        return {"title": "Unknown", "company": "Unknown", "applied_date": received}
-    return None 
+def filter_application_emails(emails, processed_ids):
+    return [email for email in emails if email.get("id") not in processed_ids] 
