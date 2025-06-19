@@ -1,6 +1,6 @@
 import argparse
 from jobbot_config import load_env, load_processed_ids, save_processed_ids
-from notion_client import init_notion_client, create_application_page
+from notion_api import init_notion_client, create_application_page
 from email_ingest import authenticate_msal, fetch_application_emails, filter_unprocessed_emails, parse_application_email
 from manual_cli import prompt_manual_entry
 
