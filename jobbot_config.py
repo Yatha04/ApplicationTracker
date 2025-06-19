@@ -29,12 +29,14 @@ def load_processed_ids():
     """Load processed Outlook message IDs from the local JSON file. Returns a set."""
     if not PROCESSED_IDS_PATH.exists():
         return set()
-    with open(PROCESSED_IDS_PATH, 'r', encoding='utf-8') as f:
-        try:
+    try:
+        with open(PROCESSED_IDS_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            return set(data)
-        except Exception:
+            if isinstance(data, list):
+                return set(data)
             return set()
+    except Exception:
+        return set()
 
 def save_processed_ids(ids):
     """Save the set of processed Outlook message IDs to the local JSON file."""
